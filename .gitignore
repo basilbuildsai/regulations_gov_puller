@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pulled corpus — large, redundant with the source of truth (regulations.gov)
+data/
+raw/
+attachments/
+*.jsonl
+*.log
