@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 from pypdf import PdfReader
-from pypdf.errors import PdfReadError, PdfStreamError
+from pypdf.errors import DependencyError, PdfReadError, PdfStreamError
 
 from .sanitize import sanitize
 
@@ -113,20 +113,52 @@ def extract_one(pdf_path: Path, root: Path) -> dict:
         info["error"] = f"{type(e).__name__}: {e}"
         return info
 
-    n_pages = len(reader.pages)
-    info["pages"] = n_pages
-    if n_pages > MAX_PAGES_PER_PDF:
-        info["status"] = "too_many_pages"
-        info["pages_processed"] = 0
+    # Many federal-submission PDFs ship with permissions set but no password.
+    # An empty-string decrypt unlocks those without affecting actually-protected files.
+    if getattr(reader, "is_encrypted", False):
+        info["was_encrypted"] = True
+        try:
+            reader.decrypt("")
+        except Exception as e:  # noqa: BLE001
+            info["status"] = "encrypted_locked"
+            info["error"] = f"{type(e).__name__}: {e}"
+            out_path = pdf_path.with_suffix(".txt")
+            out_path.write_text("", encoding="utf-8")
+            return info
+
+    # Past this point any pypdf call may raise DependencyError on AES-encrypted
+    # streams when `cryptography` is missing, or PdfReadError on malformed
+    # internals. Wrap the whole page-processing block defensively so one bad
+    # PDF can't kill a 1,000-PDF run.
+    try:
+        n_pages = len(reader.pages)
+        info["pages"] = n_pages
+        if n_pages > MAX_PAGES_PER_PDF:
+            info["status"] = "too_many_pages"
+            info["pages_processed"] = 0
+            return info
+
+        raw_text, pages_done = _extract_text_from_reader(reader, info)
+
+        if len(raw_text) < PORTFOLIO_TRIGGER_MAX_CHARS:
+            embedded_text = _extract_embedded_pdfs(reader, info)
+            if embedded_text:
+                raw_text = embedded_text
+                info["used_embedded"] = True
+    except DependencyError as e:
+        info["status"] = "skipped_encrypted_aes"
+        info["error"] = (
+            f"{type(e).__name__}: {e} -- install `cryptography>=3.1` to attempt"
+        )
+        out_path = pdf_path.with_suffix(".txt")
+        out_path.write_text("", encoding="utf-8")
         return info
-
-    raw_text, pages_done = _extract_text_from_reader(reader, info)
-
-    if len(raw_text) < PORTFOLIO_TRIGGER_MAX_CHARS:
-        embedded_text = _extract_embedded_pdfs(reader, info)
-        if embedded_text:
-            raw_text = embedded_text
-            info["used_embedded"] = True
+    except (PdfReadError, PdfStreamError, Exception) as e:  # noqa: BLE001
+        info["status"] = "page_processing_failed"
+        info["error"] = f"{type(e).__name__}: {e}"
+        out_path = pdf_path.with_suffix(".txt")
+        out_path.write_text("", encoding="utf-8")
+        return info
 
     clean, san_info = sanitize(raw_text, max_chars=MAX_OUTPUT_CHARS)
 
