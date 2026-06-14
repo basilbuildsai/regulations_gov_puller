@@ -68,12 +68,12 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=basil
-WorkingDirectory=/home/basil/regulations_gov_puller
-EnvironmentFile=/home/basil/regulations_gov_puller/.env
-ExecStart=/home/basil/regulations_gov_puller/.venv/bin/python -m puller.pull_inline --docket FAA-2025-1908 --data-dir data
-StandardOutput=append:/home/basil/regulations_gov_puller/data/pull_inline.log
-StandardError=append:/home/basil/regulations_gov_puller/data/pull_inline.log
+User=youruser
+WorkingDirectory=/home/youruser/regulations_gov_puller
+EnvironmentFile=/home/youruser/regulations_gov_puller/.env
+ExecStart=/home/youruser/regulations_gov_puller/.venv/bin/python -m puller.pull_inline --docket FAA-2025-1908 --data-dir data
+StandardOutput=append:/home/youruser/regulations_gov_puller/data/pull_inline.log
+StandardError=append:/home/youruser/regulations_gov_puller/data/pull_inline.log
 TimeoutStartSec=86400
 
 [Install]
