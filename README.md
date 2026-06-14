@@ -1,6 +1,8 @@
 # regulations.gov puller
 
-Standalone, server-friendly toolkit for pulling all comments and PDF attachments from a regulations.gov docket via the api.data.gov v4 API. Built for "1-Hour Rulemaking Recon" YouTube videos and any project that needs a complete, sanitized public-comment corpus ready for LLM analysis.
+Standalone, server-friendly toolkit for pulling all comments and PDF attachments from a regulations.gov docket via the api.data.gov v4 API. Produces a complete, sanitized public-comment corpus ready for downstream LLM analysis.
+
+**Example use case:** pulling all 3,928 public comments and 1,170 PDF attachments from FAA docket FAA-2025-1908 (the proposed Part 108 BVLOS drone rule) for stance classification and coordinated-campaign detection.
 
 Three stages:
 
@@ -13,15 +15,34 @@ A shared `puller.sanitize` module strips control / zero-width / ANSI / RTL-overr
 ## Setup
 
 ```bash
-git clone <this-private-repo>
+git clone <this-repo>
 cd regulations_gov_puller
 
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env and paste your api.data.gov key (free at https://api.data.gov/signup/)
+# Edit .env and paste your api.data.gov key (instructions below)
 ```
+
+### Getting an api.data.gov key
+
+The puller uses the public regulations.gov v4 API, which is gated by an api.data.gov key. The key is free and issued instantly.
+
+1. Open https://api.data.gov/signup/
+2. Fill in your name, email, and a short "how will you use this" note (any answer is fine, e.g. "pulling public-comment data for regulatory analysis").
+3. Submit the form. The key appears immediately on the confirmation page **and** is emailed to you. Save both.
+4. Free-tier limits: **1,000 requests / hour** and roughly 50,000 / day, plenty for any single docket.
+
+### Where to put the key
+
+Open the `.env` file at the project root and paste your key after `DATA_GOV_KEY=`:
+
+```
+DATA_GOV_KEY=your_key_here
+```
+
+The `.env` file is git-ignored, so the key stays on your machine. All three pipeline stages read it automatically via `python-dotenv`; nothing else needs to be configured.
 
 ## Quick run (any docket)
 
